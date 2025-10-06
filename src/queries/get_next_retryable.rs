@@ -220,6 +220,7 @@ mod tests {
     }
 
     #[sqlx::test(migrations = "./migrations")]
+    #[ignore = "TODO: implement test for latest failed attempt selection"]
     async fn it_selects_the_latest_failed_attempt_of_the_message(
         _: sqlx::PgPool
     ) -> anyhow::Result<()> {
