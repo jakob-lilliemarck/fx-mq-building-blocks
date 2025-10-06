@@ -58,6 +58,9 @@ echo "Bumping version: $current_version → $new_version"
 # --- Update Cargo.toml ---
 sed -i "s/^version = \".*\"/version = \"$new_version\"/" Cargo.toml
 
+# --- Update Cargo.lock to reflect the version change ---
+cargo update -p fx-mq-building-blocks
+
 # --- Commit the version bump ---
 git add Cargo.toml Cargo.lock
 git commit -m "chore: bumped version from $current_version to $new_version"
