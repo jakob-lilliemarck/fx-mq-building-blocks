@@ -59,7 +59,7 @@ echo "Bumping version: $current_version → $new_version"
 sed -i "s/^version = \".*\"/version = \"$new_version\"/" Cargo.toml
 
 # --- Commit the version bump ---
-git add Cargo.toml
+git add Cargo.toml Cargo.lock
 git commit -m "chore: bumped version from $current_version to $new_version"
 
 # --- Create git tag ---
