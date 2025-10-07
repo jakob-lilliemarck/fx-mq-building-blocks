@@ -50,16 +50,13 @@ mod tests {
     use uuid::Uuid;
 
     #[sqlx::test(migrations = "./migrations")]
-    async fn it_acquires_a_lease_when_none_is_held(
-        pool: sqlx::PgPool
-    ) -> anyhow::Result<()> {
+    async fn it_acquires_a_lease_when_none_is_held(pool: sqlx::PgPool) -> anyhow::Result<()> {
         let message_id = Uuid::now_v7();
         let host_id = Uuid::now_v7();
         let now = Utc::now();
         let hold_for = Duration::from_mins(1);
 
-        let actual =
-            request_lease(&pool, message_id, now, host_id, hold_for).await?;
+        let actual = request_lease(&pool, message_id, now, host_id, hold_for).await?;
 
         assert_eq!(Some((now + hold_for).trunc_subsecs(6)), actual);
         assert!(has_active_lease(&pool, message_id, now).await?);
@@ -69,15 +66,14 @@ mod tests {
 
     #[sqlx::test(migrations = "./migrations")]
     async fn it_acquires_a_lease_when_one_id_held_by_the_requesting_host(
-        pool: sqlx::PgPool
+        pool: sqlx::PgPool,
     ) -> anyhow::Result<()> {
         let message_id = Uuid::now_v7();
         let host_id = Uuid::now_v7();
         let now = Utc::now();
         let hold_for = Duration::from_mins(1);
 
-        let actual =
-            request_lease(&pool, message_id, now, host_id, hold_for).await?;
+        let actual = request_lease(&pool, message_id, now, host_id, hold_for).await?;
 
         assert_eq!(Some((now + hold_for).trunc_subsecs(6)), actual);
         assert!(has_active_lease(&pool, message_id, now).await?);
@@ -87,8 +83,7 @@ mod tests {
 
         let now = Utc::now();
 
-        let actual =
-            request_lease(&pool, message_id, now, host_id, hold_for).await?;
+        let actual = request_lease(&pool, message_id, now, host_id, hold_for).await?;
 
         assert_eq!(Some((now + hold_for).trunc_subsecs(6)), actual);
         assert!(has_active_lease(&pool, message_id, now).await?);
@@ -98,15 +93,14 @@ mod tests {
 
     #[sqlx::test(migrations = "./migrations")]
     async fn it_acquires_a_lease_when_there_is_an_expired_lease_from_another_host(
-        pool: sqlx::PgPool
+        pool: sqlx::PgPool,
     ) -> anyhow::Result<()> {
         let message_id = Uuid::now_v7();
         let host_id = Uuid::now_v7();
         let now = Utc::now();
         let hold_for = Duration::from_millis(10);
 
-        let actual =
-            request_lease(&pool, message_id, now, host_id, hold_for).await?;
+        let actual = request_lease(&pool, message_id, now, host_id, hold_for).await?;
 
         assert_eq!(Some((now + hold_for).trunc_subsecs(6)), actual);
         assert!(has_active_lease(&pool, message_id, now).await?);
@@ -117,8 +111,7 @@ mod tests {
         let host_id = Uuid::now_v7();
         let now = Utc::now();
 
-        let actual =
-            request_lease(&pool, message_id, now, host_id, hold_for).await?;
+        let actual = request_lease(&pool, message_id, now, host_id, hold_for).await?;
 
         assert_eq!(Some((now + hold_for).trunc_subsecs(6)), actual);
         assert!(has_active_lease(&pool, message_id, now).await?);
@@ -128,15 +121,14 @@ mod tests {
 
     #[sqlx::test(migrations = "./migrations")]
     async fn it_does_not_acquire_a_lease_when_one_is_held_by_another_host(
-        pool: sqlx::PgPool
+        pool: sqlx::PgPool,
     ) -> anyhow::Result<()> {
         let message_id = Uuid::now_v7();
         let host_id = Uuid::now_v7();
         let now = Utc::now();
         let hold_for = Duration::from_mins(1);
 
-        let actual =
-            request_lease(&pool, message_id, now, host_id, hold_for).await?;
+        let actual = request_lease(&pool, message_id, now, host_id, hold_for).await?;
 
         assert_eq!(Some((now + hold_for).trunc_subsecs(6)), actual);
         assert!(has_active_lease(&pool, message_id, now).await?);
@@ -144,8 +136,7 @@ mod tests {
         let host_id = Uuid::now_v7();
         let now = Utc::now();
 
-        let actual =
-            request_lease(&pool, message_id, now, host_id, hold_for).await?;
+        let actual = request_lease(&pool, message_id, now, host_id, hold_for).await?;
 
         assert_eq!(None, actual);
 

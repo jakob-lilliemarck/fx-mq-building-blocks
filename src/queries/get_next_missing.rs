@@ -67,17 +67,12 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        queries::{
-            get_next_missing::get_next_missing, get_next_unattempted,
-            publish_message,
-        },
+        queries::{get_next_missing::get_next_missing, get_next_unattempted, publish_message},
         testing_tools::{TestMessage, is_in_progress, is_missing},
     };
 
     #[sqlx::test(migrations = "./migrations")]
-    async fn it_gets_the_next_missing_message(
-        pool: sqlx::PgPool
-    ) -> anyhow::Result<()> {
+    async fn it_gets_the_next_missing_message(pool: sqlx::PgPool) -> anyhow::Result<()> {
         let now = Utc::now();
         let host_id = Uuid::now_v7();
         let hold_for = Duration::from_millis(1);

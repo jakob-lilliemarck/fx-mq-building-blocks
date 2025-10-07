@@ -8,12 +8,8 @@ use std::{
 
 use crate::backoff::ExponentialBackoff;
 
-type PgStream = Pin<
-    Box<
-        dyn Stream<Item = Result<sqlx::postgres::PgNotification, sqlx::Error>>
-            + Send,
-    >,
->;
+type PgStream =
+    Pin<Box<dyn Stream<Item = Result<sqlx::postgres::PgNotification, sqlx::Error>> + Send>>;
 
 /// Stream that yields `true` when polling should occur.
 ///
@@ -44,9 +40,8 @@ impl PollControlStream {
     #[tracing::instrument(skip(self, pg_stream), level = "debug")]
     pub fn with_pg_stream(
         &mut self,
-        pg_stream: impl Stream<
-            Item = Result<sqlx::postgres::PgNotification, sqlx::Error>,
-        > + Unpin
+        pg_stream: impl Stream<Item = Result<sqlx::postgres::PgNotification, sqlx::Error>>
+        + Unpin
         + Send
         + 'static,
     ) {
@@ -83,10 +78,7 @@ impl PollControlStream {
         fields(duration_ms = duration.as_millis()),
         level = "debug"
     )]
-    fn wake_in(
-        cx: &mut Context<'_>,
-        duration: Duration,
-    ) {
+    fn wake_in(cx: &mut Context<'_>, duration: Duration) {
         let waker = cx.waker().clone();
         tokio::spawn(async move {
             tokio::time::sleep(duration).await;
@@ -127,10 +119,7 @@ impl Stream for PollControlStream {
         fields(failed_attempts = self.failed_attempts, poll = self.poll),
         level = "debug"
     )]
-    fn poll_next(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Option<Self::Item>> {
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let slf = self.get_mut();
 
         let now = Utc::now();
@@ -185,8 +174,7 @@ mod tests {
     async fn test_backoff() {
         let duration = Duration::from_millis(5);
 
-        let mut stream =
-            PollControlStream::new(ExponentialBackoff::new(2, duration));
+        let mut stream = PollControlStream::new(ExponentialBackoff::new(2, duration));
 
         let iterations = 3;
         // Iteration 0: immediate (poll=true)
@@ -219,8 +207,7 @@ mod tests {
     async fn test_poll_duration_override() {
         let duration = Duration::from_millis(5);
 
-        let mut stream =
-            PollControlStream::new(ExponentialBackoff::new(2, duration));
+        let mut stream = PollControlStream::new(ExponentialBackoff::new(2, duration));
 
         stream.set_poll();
 

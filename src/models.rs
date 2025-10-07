@@ -2,9 +2,7 @@ use const_fnv1a_hash::fnv1a_hash_str_32;
 use serde::{Serialize, de::DeserializeOwned};
 use uuid::Uuid;
 
-pub trait Message:
-    Serialize + DeserializeOwned + Clone + Send + Sync + 'static
-{
+pub trait Message: Serialize + DeserializeOwned + Clone + Send + Sync + 'static {
     const NAME: &str;
     const HASH: i32 = fnv1a_hash_str_32(Self::NAME) as i32;
 }

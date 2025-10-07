@@ -1,8 +1,7 @@
 use crate::models::RawMessage;
 use crate::queries::{
-    get_next_missing, get_next_retryable, get_next_unattempted,
-    publish_message, report_dead, report_retryable, report_success,
-    request_lease,
+    get_next_missing, get_next_retryable, get_next_unattempted, publish_message, report_dead,
+    report_retryable, report_success, request_lease,
 };
 use crate::testing_tools::{
     is_dead, is_failed, is_in_progress, is_missing, is_pending, is_succeeded,

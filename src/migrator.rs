@@ -47,10 +47,7 @@ impl PgIdentifier {
 }
 
 impl std::fmt::Display for PgIdentifier {
-    fn fmt(
-        &self,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", &self.ident)
     }
 }
@@ -76,9 +73,7 @@ mod tests {
 
     #[test]
     fn it_rejects_too_large_identifier_names() -> anyhow::Result<()> {
-        assert!(
-            PgIdentifier::parse("🐍🐍🐍🐍🐍🐍🐍🐍🐍🐍🐍🐍🐍🐍🐍🐍").is_err()
-        );
+        assert!(PgIdentifier::parse("🐍🐍🐍🐍🐍🐍🐍🐍🐍🐍🐍🐍🐍🐍🐍🐍").is_err());
         Ok(())
     }
 
@@ -123,10 +118,7 @@ static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!();
 /// # Errors
 ///
 /// Returns `sqlx::Error` if schema creation or migration execution fails.
-pub async fn run_migrations<'a, A>(
-    conn: A,
-    schema: &str,
-) -> Result<(), MigratorError>
+pub async fn run_migrations<'a, A>(conn: A, schema: &str) -> Result<(), MigratorError>
 where
     A: Acquire<'a, Database = Postgres>,
 {
@@ -135,13 +127,11 @@ where
     let mut tx = conn.begin().await?;
 
     // Ensure the schema exists
-    let create_schema =
-        format!("CREATE SCHEMA IF NOT EXISTS {};", schema_ident.as_ref());
+    let create_schema = format!("CREATE SCHEMA IF NOT EXISTS {};", schema_ident.as_ref());
     sqlx::query(&create_schema).execute(&mut *tx).await?;
 
     // Temporarily set search_path for this transaction
-    let set_search_path =
-        format!("SET LOCAL search_path TO {};", schema_ident.as_ref());
+    let set_search_path = format!("SET LOCAL search_path TO {};", schema_ident.as_ref());
     sqlx::query(&set_search_path).execute(&mut *tx).await?;
 
     // Run migrations within the schema

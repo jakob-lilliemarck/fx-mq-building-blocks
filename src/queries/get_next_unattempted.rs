@@ -86,9 +86,7 @@ mod tests {
     use serde_json::json;
 
     #[sqlx::test(migrations = "./migrations")]
-    async fn it_gets_available_unattempted_messages(
-        pool: sqlx::PgPool
-    ) -> anyhow::Result<()> {
+    async fn it_gets_available_unattempted_messages(pool: sqlx::PgPool) -> anyhow::Result<()> {
         let message = TestMessage {
             message: "testing".to_string(),
             value: 42,
@@ -117,15 +115,12 @@ mod tests {
     }
 
     #[sqlx::test(migrations = "./migrations")]
-    async fn it_returns_none_when_none_are_available(
-        pool: sqlx::PgPool
-    ) -> anyhow::Result<()> {
+    async fn it_returns_none_when_none_are_available(pool: sqlx::PgPool) -> anyhow::Result<()> {
         let now = Utc::now();
         let host_id = Uuid::now_v7();
         let hold_for = Duration::from_mins(1);
 
-        let polled =
-            get_next_unattempted(&pool, now, host_id, hold_for).await?;
+        let polled = get_next_unattempted(&pool, now, host_id, hold_for).await?;
 
         assert!(polled.is_none());
 
@@ -133,11 +128,8 @@ mod tests {
     }
 
     #[sqlx::test(migrations = "./migrations")]
-    async fn it_gets_an_unattempted_message_once(
-        pool: sqlx::PgPool
-    ) -> anyhow::Result<()> {
-        let published =
-            publish_message(&pool, &TestMessage::default().to_raw()?).await?;
+    async fn it_gets_an_unattempted_message_once(pool: sqlx::PgPool) -> anyhow::Result<()> {
+        let published = publish_message(&pool, &TestMessage::default().to_raw()?).await?;
 
         let now = Utc::now();
         let host_id = Uuid::now_v7();
@@ -148,8 +140,7 @@ mod tests {
 
         assert!(published.id == polled.id);
 
-        let polled =
-            get_next_unattempted(&pool, now, host_id, hold_for).await?;
+        let polled = get_next_unattempted(&pool, now, host_id, hold_for).await?;
 
         assert!(polled.is_none());
 
@@ -157,13 +148,9 @@ mod tests {
     }
 
     #[sqlx::test(migrations = "./migrations")]
-    async fn it_skips_locked_messages(
-        pool: sqlx::PgPool
-    ) -> anyhow::Result<()> {
-        let message_1 =
-            publish_message(&pool, &TestMessage::default().to_raw()?).await?;
-        let message_2 =
-            publish_message(&pool, &TestMessage::default().to_raw()?).await?;
+    async fn it_skips_locked_messages(pool: sqlx::PgPool) -> anyhow::Result<()> {
+        let message_1 = publish_message(&pool, &TestMessage::default().to_raw()?).await?;
+        let message_2 = publish_message(&pool, &TestMessage::default().to_raw()?).await?;
 
         let now = Utc::now();
         let host_id = Uuid::now_v7();

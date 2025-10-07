@@ -63,9 +63,7 @@ mod tests {
     use uuid::Uuid;
 
     #[sqlx::test(migrations = "./migrations")]
-    async fn it_deletes_leases_and_failed_attempts(
-        pool: sqlx::PgPool
-    ) -> anyhow::Result<()> {
+    async fn it_deletes_leases_and_failed_attempts(pool: sqlx::PgPool) -> anyhow::Result<()> {
         let now = Utc::now();
         let host_id = Uuid::now_v7();
         let hold_for = Duration::from_mins(1);
@@ -93,9 +91,7 @@ mod tests {
     }
 
     #[sqlx::test(migrations = "./migrations")]
-    async fn it_errors_if_the_message_was_not_attempted(
-        pool: sqlx::PgPool
-    ) -> anyhow::Result<()> {
+    async fn it_errors_if_the_message_was_not_attempted(pool: sqlx::PgPool) -> anyhow::Result<()> {
         let now = Utc::now();
         let message = TestMessage::default();
         let backoff = ConstantBackoff::new(Duration::from_mins(5));

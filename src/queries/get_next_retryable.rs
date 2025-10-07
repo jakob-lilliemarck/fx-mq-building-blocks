@@ -78,9 +78,7 @@ mod tests {
     };
 
     #[sqlx::test(migrations = "./migrations")]
-    async fn it_gets_a_retryable_message(
-        pool: sqlx::PgPool
-    ) -> anyhow::Result<()> {
+    async fn it_gets_a_retryable_message(pool: sqlx::PgPool) -> anyhow::Result<()> {
         let now = Utc::now();
         let host_id = Uuid::now_v7();
         let hold_for = Duration::from_mins(1);
@@ -116,9 +114,7 @@ mod tests {
     }
 
     #[sqlx::test(migrations = "./migrations")]
-    async fn it_skips_messages_with_active_leases(
-        pool: sqlx::PgPool
-    ) -> anyhow::Result<()> {
+    async fn it_skips_messages_with_active_leases(pool: sqlx::PgPool) -> anyhow::Result<()> {
         let now = Utc::now();
         let host_id = Uuid::now_v7();
         let hold_for = Duration::from_mins(1);
@@ -155,9 +151,7 @@ mod tests {
     }
 
     #[sqlx::test(migrations = "./migrations")]
-    async fn it_skips_locked_messages(
-        pool: sqlx::PgPool
-    ) -> anyhow::Result<()> {
+    async fn it_skips_locked_messages(pool: sqlx::PgPool) -> anyhow::Result<()> {
         let now = Utc::now();
         let host_id = Uuid::now_v7();
         let hold_for = Duration::from_mins(0); // set lease duration to 0 for these tests
@@ -189,8 +183,7 @@ mod tests {
             .await?
             .expect("Expected to get a retryable message");
 
-        let polled =
-            get_next_retryable(&mut *tx_2, now, host_id, hold_for).await?;
+        let polled = get_next_retryable(&mut *tx_2, now, host_id, hold_for).await?;
 
         // close transactions in reverse order
         tx_2.commit().await?;
@@ -203,7 +196,7 @@ mod tests {
 
     #[sqlx::test(migrations = "./migrations")]
     async fn it_returns_none_when_there_is_nothing_to_retry(
-        pool: sqlx::PgPool
+        pool: sqlx::PgPool,
     ) -> anyhow::Result<()> {
         let now = Utc::now();
         let host_id = Uuid::now_v7();
@@ -222,7 +215,7 @@ mod tests {
     #[sqlx::test(migrations = "./migrations")]
     #[ignore = "TODO: implement test for latest failed attempt selection"]
     async fn it_selects_the_latest_failed_attempt_of_the_message(
-        _: sqlx::PgPool
+        _: sqlx::PgPool,
     ) -> anyhow::Result<()> {
         // We must test that we select the previous failure attempt, as we use attempted to incremented the count
         todo!()

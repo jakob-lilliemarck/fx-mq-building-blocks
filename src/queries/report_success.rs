@@ -34,16 +34,13 @@ mod tests {
     use super::*;
     use crate::backoff::ConstantBackoff;
     use crate::queries::{
-        get_next_retryable, get_next_unattempted, publish_message,
-        report_retryable,
+        get_next_retryable, get_next_unattempted, publish_message, report_retryable,
     };
     use crate::testing_tools::{TestMessage, is_succeeded};
     use std::time::Duration;
 
     #[sqlx::test(migrations = "./migrations")]
-    async fn it_deletes_associated_leases(
-        pool: sqlx::PgPool
-    ) -> anyhow::Result<()> {
+    async fn it_deletes_associated_leases(pool: sqlx::PgPool) -> anyhow::Result<()> {
         let now = Utc::now();
         let host_id = Uuid::now_v7();
         let hold_for = Duration::from_mins(1);
@@ -65,9 +62,7 @@ mod tests {
     }
 
     #[sqlx::test(migrations = "./migrations")]
-    async fn it_errors_if_the_message_was_not_attempted(
-        pool: sqlx::PgPool
-    ) -> anyhow::Result<()> {
+    async fn it_errors_if_the_message_was_not_attempted(pool: sqlx::PgPool) -> anyhow::Result<()> {
         let now = Utc::now();
         let message = TestMessage::default();
 
@@ -81,9 +76,7 @@ mod tests {
     }
 
     #[sqlx::test(migrations = "./migrations")]
-    async fn it_deletes_failed_attempts(
-        pool: sqlx::PgPool
-    ) -> anyhow::Result<()> {
+    async fn it_deletes_failed_attempts(pool: sqlx::PgPool) -> anyhow::Result<()> {
         let now = Utc::now();
         let host_id = Uuid::now_v7();
         let hold_for = Duration::from_mins(1);
@@ -98,8 +91,7 @@ mod tests {
 
         let try_earliest_at = backoff.try_at(1, now);
 
-        report_retryable(&pool, published.id, now, 1, try_earliest_at, "error")
-            .await?;
+        report_retryable(&pool, published.id, now, 1, try_earliest_at, "error").await?;
 
         get_next_retryable(&pool, now, host_id, hold_for)
             .await?

@@ -49,10 +49,7 @@ mod tests {
 
         assert_eq!(TestMessage::NAME, published.name);
         assert_eq!(TestMessage::HASH, published.hash);
-        assert_eq!(
-            json!({ "message": "test", "value": 42 }),
-            published.payload
-        );
+        assert_eq!(json!({ "message": "test", "value": 42 }), published.payload);
 
         assert!(is_pending(&pool, published.id, Utc::now()).await?);
 

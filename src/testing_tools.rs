@@ -274,10 +274,7 @@ pub struct TestMessage {
 }
 
 impl TestMessage {
-    pub fn new(
-        message: String,
-        value: i32,
-    ) -> Self {
+    pub fn new(message: String, value: i32) -> Self {
         Self { message, value }
     }
 
@@ -301,8 +298,7 @@ impl Message for TestMessage {
 impl Default for TestMessage {
     fn default() -> Self {
         TestMessage {
-            message: "whats the meaning of life, the universe and everything?"
-                .to_string(),
+            message: "whats the meaning of life, the universe and everything?".to_string(),
             value: 42,
         }
     }
