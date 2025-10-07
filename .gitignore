@@ -8,6 +8,7 @@
 # Local environment files
 .env.local
 .env.*.local
+.envrc
 
 # IDE files
 .vscode/

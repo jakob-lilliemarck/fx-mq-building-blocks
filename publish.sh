@@ -3,10 +3,10 @@ set -euo pipefail
 
 # --- Run tests ---
 echo "Running tests..."
-cargo test --lib
+cargo test
 
 # --- Configuration ---
-TOKEN="${CRATES_IO_TOKEN:-}"  # safer than hardcoding
+TOKEN="${CRATES_IO_TOKEN:-}"
 
 # --- Validation checks ---
 if [[ -z "$TOKEN" ]]; then
@@ -78,7 +78,7 @@ if [[ "$confirm" =~ ^[Yy]$ ]]; then
   echo "Publishing crate..."
   cargo publish
   echo "✅ Crate published successfully!"
-  
+
   # Push the tag to remote
   echo "Pushing tag v$new_version to remote..."
   git push origin "v$new_version"
