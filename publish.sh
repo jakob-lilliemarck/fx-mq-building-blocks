@@ -5,6 +5,14 @@ set -euo pipefail
 echo "Running tests..."
 cargo test
 
+# --- Check code formatting ---
+echo "Checking code formatting..."
+cargo fmt --check
+
+# --- Check offline documentation build ---
+echo "Checking documentation builds offline (simulating docs.rs)..."
+SQLX_OFFLINE=true cargo doc
+
 # --- Configuration ---
 TOKEN="${CRATES_IO_TOKEN:-}"
 
@@ -26,7 +34,8 @@ fi
 echo "$TOKEN" | cargo login
 
 # --- Read current version ---
-current_version=$(cargo pkgid | sed 's/.*#//')  # e.g., 0.1.0
+package_name=$(cargo read-manifest | grep '"name"' | cut -d'"' -f4)  # e.g., fx-mq-building-blocks
+current_version=$(cargo pkgid | cut -d'#' -f2)  # e.g., 0.1.0
 IFS='.' read -r major minor patch <<< "$current_version"
 
 echo "Current version: $current_version"
@@ -59,7 +68,7 @@ echo "Bumping version: $current_version → $new_version"
 sed -i "s/^version = \".*\"/version = \"$new_version\"/" Cargo.toml
 
 # --- Update Cargo.lock to reflect the version change ---
-cargo update -p fx-mq-building-blocks
+cargo update -p "$package_name"
 
 # --- Commit the version bump ---
 git add Cargo.toml Cargo.lock
