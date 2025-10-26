@@ -82,7 +82,7 @@ git commit -m "chore: bumped version from $current_version to $new_version"
 git tag "v$new_version" -m "Release v$new_version"
 
 # --- Confirm publishing ---
-read -p "Dry-run succeeded. Do you want to publish for real? [y/N] " confirm
+read -p "All tests passing. Do you want to publish for real? [y/N] " confirm
 if [[ "$confirm" =~ ^[Yy]$ ]]; then
   echo "Publishing crate..."
   cargo publish
