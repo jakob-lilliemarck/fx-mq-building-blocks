@@ -267,6 +267,35 @@ pub async fn has_active_lease(
     Ok(exists.unwrap_or(false))
 }
 
+pub async fn get_all_messages<'c, E: PgExecutor<'c>>(
+    executor: E,
+) -> Result<Vec<RawMessage>, sqlx::Error> {
+    let messages = sqlx::query_as!(
+        RawMessage,
+        r#"
+        SELECT
+            id "id!",
+            name "name!",
+            hash "hash!",
+            payload "payload!",
+            (SELECT COUNT(*)::INTEGER FROM attempts_failed af WHERE af.message_id = id) "attempted!"
+        FROM messages_unattempted
+        UNION ALL
+        SELECT
+            id "id!",
+            name "name!",
+            hash "hash!",
+            payload "payload!",
+            (SELECT COUNT(*)::INTEGER FROM attempts_failed af WHERE af.message_id = id) "attempted!"
+        FROM messages_attempted
+        "#
+    )
+    .fetch_all(executor)
+    .await?;
+
+    Ok(messages)
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct TestMessage {
     pub message: String,

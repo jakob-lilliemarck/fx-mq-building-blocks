@@ -106,9 +106,9 @@ pub enum MigratorError {
 // Embed the migrations directory at compile time
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!();
 
-/// Runs database migrations for the fx-event-bus schema.
+/// Runs database migrations for the specified schema.
 ///
-/// Creates the 'fx_event_bus' schema if it doesn't exist and runs all
+/// Creates the specified schema if it doesn't exist and runs all
 /// embedded migrations within that schema.
 ///
 /// # Arguments
