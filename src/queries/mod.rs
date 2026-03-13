@@ -6,6 +6,7 @@ mod report_dead;
 mod report_retryable;
 mod report_success;
 mod request_lease;
+mod search_scheduled;
 mod with_schema;
 
 pub use get_next_missing::get_next_missing;

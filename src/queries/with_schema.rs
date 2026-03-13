@@ -1,4 +1,5 @@
 use crate::models::RawMessage;
+use crate::queries::search_scheduled::search_scheduled;
 use crate::queries::{
     get_next_missing, get_next_retryable, get_next_unattempted, publish_message, report_dead,
     report_retryable, report_success, request_lease,
@@ -189,5 +190,15 @@ impl Queries {
     ) -> Result<bool, sqlx::Error> {
         set_schema_for_transaction(tx, &self.schema).await?;
         is_dead(&mut **tx, message_id, now).await
+    }
+
+    pub async fn search_pending<'tx>(
+        &self,
+        tx: &mut PgTransaction<'tx>,
+        name: &str,
+        payload: &serde_json::Value,
+    ) -> Result<i64, sqlx::Error> {
+        set_schema_for_transaction(tx, &self.schema).await?;
+        search_scheduled(&mut **tx, name, payload).await
     }
 }
