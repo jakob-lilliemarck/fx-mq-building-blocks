@@ -341,8 +341,10 @@ pub struct TestQueries {
 }
 
 impl TestQueries {
-    pub fn new(schema: String) -> Self {
-        Self { schema }
+    pub fn new(schema: &str) -> Self {
+        Self {
+            schema: schema.to_string(),
+        }
     }
 
     pub async fn is_pending(
