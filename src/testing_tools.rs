@@ -1,7 +1,10 @@
-use crate::models::{Message, RawMessage};
+use crate::{
+    models::{Message, RawMessage},
+    queries::set_schema_for_transaction,
+};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::PgExecutor;
+use sqlx::{PgExecutor, PgTransaction};
 use uuid::Uuid;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -246,8 +249,8 @@ pub async fn is_dead<'c, E: PgExecutor<'c>>(
     is_of_state(executor, State::Dead, message_id, now).await
 }
 
-pub async fn has_active_lease(
-    pool: &sqlx::PgPool,
+pub async fn has_active_lease<'c, E: PgExecutor<'c>>(
+    executor: E,
     message_id: Uuid,
     now: DateTime<Utc>,
 ) -> Result<bool, sqlx::Error> {
@@ -261,7 +264,7 @@ pub async fn has_active_lease(
         message_id,
         now
     )
-    .fetch_one(pool)
+    .fetch_one(executor)
     .await?;
 
     Ok(exists.unwrap_or(false))
@@ -330,5 +333,89 @@ impl Default for TestMessage {
             message: "whats the meaning of life, the universe and everything?".to_string(),
             value: 42,
         }
+    }
+}
+
+pub struct TestQueries {
+    schema: String,
+}
+
+impl TestQueries {
+    pub async fn is_pending(
+        &self,
+        tx: &mut PgTransaction<'_>,
+        message_id: Uuid,
+        now: DateTime<Utc>,
+    ) -> Result<bool, sqlx::Error> {
+        set_schema_for_transaction(tx, &self.schema).await?;
+        is_pending(&mut **tx, message_id, now).await
+    }
+
+    pub async fn is_in_progress(
+        &self,
+        tx: &mut PgTransaction<'_>,
+        message_id: Uuid,
+        now: DateTime<Utc>,
+    ) -> Result<bool, sqlx::Error> {
+        set_schema_for_transaction(tx, &self.schema).await?;
+        is_in_progress(&mut **tx, message_id, now).await
+    }
+
+    pub async fn is_missing(
+        &self,
+        tx: &mut PgTransaction<'_>,
+        message_id: Uuid,
+        now: DateTime<Utc>,
+    ) -> Result<bool, sqlx::Error> {
+        set_schema_for_transaction(tx, &self.schema).await?;
+        is_missing(&mut **tx, message_id, now).await
+    }
+
+    pub async fn is_failed(
+        &self,
+        tx: &mut PgTransaction<'_>,
+        message_id: Uuid,
+        now: DateTime<Utc>,
+    ) -> Result<bool, sqlx::Error> {
+        set_schema_for_transaction(tx, &self.schema).await?;
+        is_failed(&mut **tx, message_id, now).await
+    }
+
+    pub async fn is_succeeded(
+        &self,
+        tx: &mut PgTransaction<'_>,
+        message_id: Uuid,
+        now: DateTime<Utc>,
+    ) -> Result<bool, sqlx::Error> {
+        set_schema_for_transaction(tx, &self.schema).await?;
+        is_succeeded(&mut **tx, message_id, now).await
+    }
+
+    pub async fn is_dead(
+        &self,
+        tx: &mut PgTransaction<'_>,
+        message_id: Uuid,
+        now: DateTime<Utc>,
+    ) -> Result<bool, sqlx::Error> {
+        set_schema_for_transaction(tx, &self.schema).await?;
+        is_dead(&mut **tx, message_id, now).await
+    }
+
+    pub async fn has_active_lease(
+        &self,
+        tx: &mut PgTransaction<'_>,
+        message_id: Uuid,
+        now: DateTime<Utc>,
+    ) -> Result<bool, sqlx::Error> {
+        set_schema_for_transaction(tx, &self.schema).await?;
+        has_active_lease(&mut **tx, message_id, now).await
+    }
+
+    pub async fn get_all_messages(
+        &self,
+        tx: &mut PgTransaction<'_>,
+    ) -> Result<Vec<RawMessage>, sqlx::Error> {
+        set_schema_for_transaction(tx, &self.schema).await?;
+        get_all_messages(&mut **tx).await
     }
 }
