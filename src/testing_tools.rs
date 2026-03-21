@@ -341,6 +341,10 @@ pub struct TestQueries {
 }
 
 impl TestQueries {
+    pub fn new(schema: String) -> Self {
+        Self { schema }
+    }
+
     pub async fn is_pending(
         &self,
         tx: &mut PgTransaction<'_>,
