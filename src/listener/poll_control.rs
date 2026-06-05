@@ -8,14 +8,13 @@ use std::{
 
 use crate::backoff::ExponentialBackoff;
 
-type PgStream =
-    Pin<Box<dyn Stream<Item = Result<sqlx::postgres::PgNotification, sqlx::Error>> + Send>>;
+type Inbound = Pin<Box<dyn Stream<Item = String> + Send + 'static>>;
 
 /// Stream that yields `true` when polling should occur.
 ///
 /// Coordinates multiple triggers: exponential backoff, PostgreSQL notifications, and immediate poll overrides.
 pub struct PollControlStream {
-    pg_stream: Option<PgStream>,
+    inbound: Option<Inbound>,
     failed_attempts: i32,
     reference_time: DateTime<Utc>,
     backoff: ExponentialBackoff,
@@ -26,7 +25,7 @@ impl PollControlStream {
     /// Creates a new poll control stream with the given backoff strategy.
     pub fn new(backoff: ExponentialBackoff) -> Self {
         Self {
-            pg_stream: None,
+            inbound: None,
             failed_attempts: 0,
             reference_time: Utc::now(),
             backoff,
@@ -34,18 +33,15 @@ impl PollControlStream {
         }
     }
 
-    /// Sets the PostgreSQL notification stream.
+    /// Sets the inbound notification stream.
     ///
     /// When notifications are received, the stream will yield immediately.
-    #[tracing::instrument(skip(self, pg_stream), level = "debug")]
-    pub fn with_pg_stream(
+    #[tracing::instrument(skip(self, inbound), level = "debug")]
+    pub fn with_inbound_stream(
         &mut self,
-        pg_stream: impl Stream<Item = Result<sqlx::postgres::PgNotification, sqlx::Error>>
-        + Unpin
-        + Send
-        + 'static,
+        inbound: impl Stream<Item = String> + Unpin + Send + 'static,
     ) {
-        self.pg_stream = Some(Box::pin(pg_stream))
+        self.inbound = Some(Box::pin(inbound))
     }
 
     /// Increments the failed attempts counter.
@@ -138,16 +134,12 @@ impl Stream for PollControlStream {
         }
 
         // if there is a notification stream, check for notifications
-        if let Some(ref mut pg_stream) = slf.pg_stream {
-            match pg_stream.as_mut().poll_next(cx) {
-                Poll::Ready(Some(Ok(_))) => {
+        if let Some(ref mut inbound) = slf.inbound {
+            match inbound.as_mut().poll_next(cx) {
+                Poll::Ready(Some(_message)) => {
                     // received a Pg notification
                     slf.reference_time = now;
                     return Poll::Ready(Some(Ok(true)));
-                }
-                Poll::Ready(Some(Err(err))) => {
-                    // forward any database errors
-                    return Poll::Ready(Some(Err(err)));
                 }
                 Poll::Ready(None) => {
                     // ignore ended stream
