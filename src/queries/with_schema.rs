@@ -1,8 +1,9 @@
+use crate::constants::FX_MQ_MESSAGE_NOTIFICATION_CHANNEL;
 use crate::models::RawMessage;
 use crate::queries::search_scheduled::search_scheduled;
 use crate::queries::{
-    get_next_missing, get_next_retryable, get_next_unattempted, publish_message, report_dead,
-    report_retryable, report_success, request_lease,
+    get_next_missing, get_next_retryable, get_next_unattempted, publish_many_messages_with_notify,
+    publish_message_with_notify, report_dead, report_retryable, report_success, request_lease,
 };
 use crate::testing_tools::{
     is_dead, is_failed, is_in_progress, is_missing, is_pending, is_succeeded,
@@ -69,13 +70,33 @@ impl Queries {
         get_next_unattempted(&mut **tx, now, host_id, hold_for).await
     }
 
+    /// Inserts a single message into `messages_unattempted` and sends a single
+    /// `pg_notify` on [`FX_MQ_MESSAGE_NOTIFICATION_CHANNEL`] with payload `"1"`.
+    ///
+    /// Only one NOTIFY is sent per call, regardless of the number of messages
+    /// (which is always 1 for this method).
     pub async fn publish_message(
         &self,
         tx: &mut PgTransaction<'_>,
         message: RawMessage,
     ) -> Result<RawMessage, sqlx::Error> {
         set_schema_for_transaction(tx, &self.schema).await?;
-        publish_message(&mut **tx, &message).await
+        publish_message_with_notify(tx, &message, FX_MQ_MESSAGE_NOTIFICATION_CHANNEL).await
+    }
+
+    /// Inserts multiple messages into `messages_unattempted` in a single batch
+    /// and sends a **single** `pg_notify` on [`FX_MQ_MESSAGE_NOTIFICATION_CHANNEL`]
+    /// with the total count as payload (e.g. `"5"` for 5 messages).
+    ///
+    /// As with [`publish_message`](Self::publish_message), there is exactly one
+    /// NOTIFY per call, regardless of batch size.
+    pub async fn publish_many_messages(
+        &self,
+        tx: &mut PgTransaction<'_>,
+        messages: &[RawMessage],
+    ) -> Result<Vec<RawMessage>, sqlx::Error> {
+        set_schema_for_transaction(tx, &self.schema).await?;
+        publish_many_messages_with_notify(tx, messages, FX_MQ_MESSAGE_NOTIFICATION_CHANNEL).await
     }
 
     pub async fn report_dead<'tx>(

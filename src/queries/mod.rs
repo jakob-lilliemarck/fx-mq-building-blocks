@@ -12,7 +12,9 @@ mod with_schema;
 pub use get_next_missing::get_next_missing;
 pub use get_next_retryable::get_next_retryable;
 pub use get_next_unattempted::get_next_unattempted;
-pub use publish_message::publish_message;
+pub use publish_message::{
+    publish_many_messages_with_notify, publish_message, publish_message_with_notify,
+};
 pub use report_dead::report_dead;
 pub use report_retryable::report_retryable;
 pub use report_success::report_success;
