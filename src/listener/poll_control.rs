@@ -93,12 +93,12 @@ impl PollControlStream {
         cx: &mut Context<'_>,
         now: DateTime<Utc>,
         attempts: i32,
-    ) -> Poll<Option<Result<bool, sqlx::Error>>> {
+    ) -> Poll<Option<bool>> {
         let try_at = self.backoff.try_at(attempts, self.reference_time);
 
         if now >= try_at {
             self.reference_time = now;
-            Poll::Ready(Some(Ok(true)))
+            Poll::Ready(Some(true))
         } else {
             let remaining = (try_at - now).to_std().unwrap_or(Duration::ZERO);
             Self::wake_in(cx, remaining);
@@ -108,7 +108,7 @@ impl PollControlStream {
 }
 
 impl Stream for PollControlStream {
-    type Item = Result<bool, sqlx::Error>;
+    type Item = bool;
 
     #[tracing::instrument(
         skip(self, cx),
@@ -130,7 +130,7 @@ impl Stream for PollControlStream {
             // set it back to false
             slf.poll = false;
             slf.reference_time = now;
-            return Poll::Ready(Some(Ok(true)));
+            return Poll::Ready(Some(true));
         }
 
         // if there is a notification stream, check for notifications
@@ -139,7 +139,7 @@ impl Stream for PollControlStream {
                 Poll::Ready(Some(_message)) => {
                     // received a Pg notification
                     slf.reference_time = now;
-                    return Poll::Ready(Some(Ok(true)));
+                    return Poll::Ready(Some(true));
                 }
                 Poll::Ready(None) => {
                     // ignore ended stream
@@ -161,6 +161,44 @@ impl Stream for PollControlStream {
 mod tests {
     use super::*;
     use futures::StreamExt;
+
+    #[tokio::test]
+    async fn test_yields_true() {
+        let mut stream = PollControlStream::new(ExponentialBackoff::new(2, Duration::from_millis(1)));
+
+        // The stream should only ever yield Some(true) and Never Some(false)
+        assert_eq!(stream.next().await, Some(true));
+        stream.increment_failed_attempts();
+        assert_eq!(stream.next().await, Some(true));
+    }
+
+    #[tokio::test]
+    async fn test_falls_back_to_polling_when_inbound_stream_ends() {
+        let duration = Duration::from_millis(5);
+
+        // Create a channel and drop the sender so the stream immediately ends
+        let (tx, rx) = futures::channel::mpsc::unbounded::<String>();
+        drop(tx);
+
+        let mut stream = PollControlStream::new(ExponentialBackoff::new(2, duration));
+        stream.with_inbound_stream(rx);
+
+        let now = Utc::now();
+
+        // First poll: immediate (poll=true)
+        assert_eq!(stream.next().await, Some(true));
+
+        // Second poll: should wait for regular backoff (attempt=1, 5ms) and then yield
+        // The notification stream has ended, so this proves the fallback works
+        assert_eq!(stream.next().await, Some(true));
+
+        let elapsed = (Utc::now() - now).to_std().unwrap_or(Duration::ZERO);
+        assert!(
+            elapsed >= duration,
+            "Expected at least {:?} to have elapsed with a dead notification channel",
+            elapsed,
+        );
+    }
 
     #[tokio::test]
     async fn test_backoff() {
