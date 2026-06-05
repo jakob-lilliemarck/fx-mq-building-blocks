@@ -32,55 +32,11 @@ pub async fn publish_message<'tx, E: PgExecutor<'tx>>(
     Ok(message)
 }
 
-/// Inserts a single message into `messages_unattempted` and sends a single
-/// `pg_notify` on the given channel with payload `"1"`.
-///
-/// The notification signals that new work is available — it carries the count
-/// of inserted messages (always `1` for this function) rather than individual
-/// message IDs.
-pub async fn publish_message_with_notify(
-    tx: &mut PgTransaction<'_>,
-    message: &RawMessage,
-    channel: &str,
-) -> Result<RawMessage, sqlx::Error> {
-    let now = Utc::now();
-
-    let message = sqlx::query_as!(
-        RawMessage,
-        r#"
-        INSERT INTO messages_unattempted (id, name, hash, payload, published_at)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING
-            id,
-            name,
-            hash,
-            payload,
-            0 "attempted!:i32"
-        "#,
-        message.id,
-        message.name,
-        message.hash,
-        message.payload,
-        now,
-    )
-    .fetch_one(&mut **tx)
-    .await?;
-
-    sqlx::query("SELECT pg_notify($1, $2::text)")
-        .bind(channel)
-        .bind(1i64)
-        .execute(&mut **tx)
-        .await?;
-
-    Ok(message)
-}
-
-/// Inserts multiple messages into `messages_unattempted` in a single batch
+/// Inserts one or more messages into `messages_unattempted` in a single batch
 /// and sends a **single** `pg_notify` on the given channel with the total
-/// count as payload (e.g. `"5"` for 5 messages).
+/// count as payload (e.g. `"1"` for 1 message, `"5"` for 5 messages).
 ///
-/// As with [`publish_message_with_notify`], there is exactly one NOTIFY per
-/// call, regardless of how many messages are inserted.
+/// There is exactly one NOTIFY per call, regardless of batch size.
 ///
 /// Returns an empty `Vec` when `messages` is empty — no NOTIFY is sent in
 /// that case.
@@ -175,7 +131,7 @@ mod tests {
     }
 
     #[sqlx::test(migrations = "./migrations")]
-    async fn it_publishes_and_notifies(pool: sqlx::PgPool) -> anyhow::Result<()> {
+    async fn it_publishes_a_single_message_with_notify(pool: sqlx::PgPool) -> anyhow::Result<()> {
         let raw = TestMessage::default().to_raw()?;
 
         let mut listener = sqlx::postgres::PgListener::connect_with(&pool).await?;
@@ -183,10 +139,12 @@ mod tests {
         let mut notifications = listener.into_stream();
 
         let mut tx = pool.begin().await?;
-        let published = publish_message_with_notify(&mut tx, &raw, "test_channel").await?;
+        let published =
+            publish_many_messages_with_notify(&mut tx, &[raw], "test_channel").await?;
         tx.commit().await?;
 
-        assert!(is_pending(&pool, published.id, Utc::now()).await?);
+        assert_eq!(published.len(), 1);
+        assert!(is_pending(&pool, published[0].id, Utc::now()).await?);
 
         let notification = notifications
             .next()

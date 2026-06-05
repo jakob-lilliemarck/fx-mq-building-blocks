@@ -3,7 +3,7 @@ use crate::models::RawMessage;
 use crate::queries::search_scheduled::search_scheduled;
 use crate::queries::{
     get_next_missing, get_next_retryable, get_next_unattempted, publish_many_messages_with_notify,
-    publish_message_with_notify, report_dead, report_retryable, report_success, request_lease,
+    report_dead, report_retryable, report_success, request_lease,
 };
 use crate::testing_tools::{
     is_dead, is_failed, is_in_progress, is_missing, is_pending, is_succeeded,
@@ -81,7 +81,9 @@ impl Queries {
         message: RawMessage,
     ) -> Result<RawMessage, sqlx::Error> {
         set_schema_for_transaction(tx, &self.schema).await?;
-        publish_message_with_notify(tx, &message, FX_MQ_MESSAGE_NOTIFICATION_CHANNEL).await
+        publish_many_messages_with_notify(tx, &[message], FX_MQ_MESSAGE_NOTIFICATION_CHANNEL)
+            .await
+            .map(|mut v| v.remove(0))
     }
 
     /// Inserts multiple messages into `messages_unattempted` in a single batch
