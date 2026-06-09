@@ -164,7 +164,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_yields_true() {
-        let mut stream = PollControlStream::new(ExponentialBackoff::new(2, Duration::from_millis(1)));
+        let mut stream =
+            PollControlStream::new(ExponentialBackoff::new(2, Duration::from_millis(1)));
 
         // The stream should only ever yield Some(true) and Never Some(false)
         assert_eq!(stream.next().await, Some(true));

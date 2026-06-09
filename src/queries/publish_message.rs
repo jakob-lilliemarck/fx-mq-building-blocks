@@ -139,8 +139,7 @@ mod tests {
         let mut notifications = listener.into_stream();
 
         let mut tx = pool.begin().await?;
-        let published =
-            publish_many_messages_with_notify(&mut tx, &[raw], "test_channel").await?;
+        let published = publish_many_messages_with_notify(&mut tx, &[raw], "test_channel").await?;
         tx.commit().await?;
 
         assert_eq!(published.len(), 1);
