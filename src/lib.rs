@@ -5,3 +5,5 @@ pub mod migrator;
 pub mod models;
 pub mod queries;
 pub mod testing_tools;
+
+pub use queries::Filter;

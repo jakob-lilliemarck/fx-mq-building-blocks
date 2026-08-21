@@ -1,16 +1,31 @@
 use crate::models::RawMessage;
+use crate::queries::Filter;
 use chrono::{DateTime, Utc};
 use sqlx::PgExecutor;
 use std::time::Duration;
 use uuid::Uuid;
 
+#[deprecated = "use get_next_retryable_with_filter(tx, now, host_id, hold_for, Filter::default())"]
 pub async fn get_next_retryable<'tx, E: PgExecutor<'tx>>(
     tx: E,
     now: DateTime<Utc>,
     host_id: Uuid,
     hold_for: Duration,
 ) -> Result<Option<RawMessage>, sqlx::Error> {
+    get_next_retryable_with_filter(tx, now, host_id, hold_for, Filter::default()).await
+}
+
+/// Polls for the next retryable message, optionally filtering out
+/// specified message names.
+pub async fn get_next_retryable_with_filter<'tx, E: PgExecutor<'tx>>(
+    tx: E,
+    now: DateTime<Utc>,
+    host_id: Uuid,
+    hold_for: Duration,
+    filter: Filter,
+) -> Result<Option<RawMessage>, sqlx::Error> {
     let expires_at = now + hold_for;
+    let exclude_names = &filter.exclude_names;
 
     let message = sqlx::query_as!(
         RawMessage,
@@ -24,6 +39,11 @@ pub async fn get_next_retryable<'tx, E: PgExecutor<'tx>>(
               AND NOT EXISTS (
                   SELECT 1 FROM leases l
                   WHERE l.message_id = fa.message_id AND l.expires_at > $1
+              )
+              AND EXISTS (
+                  SELECT 1 FROM messages_attempted ma
+                  WHERE ma.id = fa.message_id
+                    AND ma.name != ALL($4)
               )
               AND fa.failed_at = (
                   SELECT MAX(fa2.failed_at)
@@ -60,7 +80,8 @@ pub async fn get_next_retryable<'tx, E: PgExecutor<'tx>>(
         "#,
         now,
         host_id,
-        expires_at
+        expires_at,
+        exclude_names as &[String],
     )
     .fetch_optional(tx)
     .await?;
@@ -73,6 +94,7 @@ mod tests {
     use super::*;
     use crate::{
         backoff::ConstantBackoff,
+        models::Message,
         queries::{get_next_unattempted, publish_message, report_retryable},
         testing_tools::{TestMessage, is_in_progress},
     };
@@ -219,5 +241,155 @@ mod tests {
     ) -> anyhow::Result<()> {
         // We must test that we select the previous failure attempt, as we use attempted to incremented the count
         todo!()
+    }
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn it_filters_out_excluded_message_names_in_retryable(
+        pool: sqlx::PgPool,
+    ) -> anyhow::Result<()> {
+        let now = Utc::now();
+        let host_id = Uuid::now_v7();
+        let hold_for = Duration::from_mins(1);
+        let backoff = ConstantBackoff::new(Duration::from_mins(0));
+
+        let excluded = RawMessage {
+            id: Uuid::now_v7(),
+            name: "excluded-job".into(),
+            hash: 1,
+            payload: serde_json::json!({}),
+            attempted: 0,
+        };
+        let unfiltered = RawMessage {
+            id: Uuid::now_v7(),
+            name: "unfiltered-job".into(),
+            hash: 2,
+            payload: serde_json::json!({}),
+            attempted: 0,
+        };
+
+        // Publish excluded first so it gets an earlier published_at and is
+        // polled first by get_next_unattempted.
+        publish_message(&pool, &excluded).await?;
+        tokio::time::sleep(Duration::from_micros(1)).await;
+        publish_message(&pool, &unfiltered).await?;
+
+        // Move both to retryable state (polled in published_at order)
+        let polled_excluded = get_next_unattempted(&pool, now, host_id, hold_for)
+            .await?
+            .expect("Expected a message");
+        let polled_unfiltered = get_next_unattempted(&pool, now, host_id, hold_for)
+            .await?
+            .expect("Expected a message");
+
+        // Stagger failed_at so excluded is ordered first without the filter.
+        // Both retry_earliest_at must be <= the query now for eligibility.
+        let report_time_excluded = now + Duration::from_micros(1);
+        let report_time_unfiltered = now + Duration::from_micros(2);
+
+        report_retryable(
+            &pool,
+            polled_excluded.id,
+            report_time_excluded,
+            1,
+            backoff.try_at(1, report_time_excluded),
+            "error",
+        )
+        .await?;
+
+        report_retryable(
+            &pool,
+            polled_unfiltered.id,
+            report_time_unfiltered,
+            1,
+            backoff.try_at(1, report_time_unfiltered),
+            "error",
+        )
+        .await?;
+
+        let filter = Filter::default().with_exclude_names(vec!["excluded-job".into()]);
+        let query_now = report_time_unfiltered;
+        let polled =
+            get_next_retryable_with_filter(&pool, query_now, host_id, hold_for, filter)
+                .await?
+                .expect("Expected a message to be returned");
+
+        assert_eq!(polled.name, "unfiltered-job");
+
+        Ok(())
+    }
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn it_returns_all_when_exclude_is_empty_in_retryable(
+        pool: sqlx::PgPool,
+    ) -> anyhow::Result<()> {
+        let now = Utc::now();
+        let host_id = Uuid::now_v7();
+        let hold_for = Duration::from_mins(1);
+        let backoff = ConstantBackoff::new(Duration::from_mins(0));
+        let message = TestMessage::default();
+
+        let published = publish_message(&pool, &message.to_raw()?).await?;
+
+        get_next_unattempted(&pool, now, host_id, hold_for)
+            .await?
+            .expect("Expected a message");
+
+        let try_earliest_at = backoff.try_at(1, now);
+
+        report_retryable(
+            &pool,
+            published.id,
+            now,
+            1,
+            try_earliest_at,
+            "error",
+        )
+        .await?;
+
+        let polled =
+            get_next_retryable_with_filter(&pool, now, host_id, hold_for, Filter::default())
+                .await?
+                .expect("Expected a message");
+
+        assert_eq!(polled.id, published.id);
+
+        Ok(())
+    }
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn it_returns_none_when_all_excluded_in_retryable(
+        pool: sqlx::PgPool,
+    ) -> anyhow::Result<()> {
+        let now = Utc::now();
+        let host_id = Uuid::now_v7();
+        let hold_for = Duration::from_mins(1);
+        let backoff = ConstantBackoff::new(Duration::from_mins(0));
+        let message = TestMessage::default();
+
+        let published = publish_message(&pool, &message.to_raw()?).await?;
+
+        get_next_unattempted(&pool, now, host_id, hold_for)
+            .await?
+            .expect("Expected a message");
+
+        let try_earliest_at = backoff.try_at(1, now);
+
+        report_retryable(
+            &pool,
+            published.id,
+            now,
+            1,
+            try_earliest_at,
+            "error",
+        )
+        .await?;
+
+        let filter = Filter::default().with_exclude_names(vec![TestMessage::NAME.into()]);
+        let polled =
+            get_next_retryable_with_filter(&pool, now, host_id, hold_for, filter).await?;
+
+        assert!(polled.is_none());
+
+        Ok(())
     }
 }

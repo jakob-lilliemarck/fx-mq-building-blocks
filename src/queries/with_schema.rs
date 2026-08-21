@@ -2,8 +2,9 @@ use crate::constants::FX_MQ_MESSAGE_NOTIFICATION_CHANNEL;
 use crate::models::RawMessage;
 use crate::queries::search_scheduled::search_scheduled;
 use crate::queries::{
-    get_next_missing, get_next_retryable, get_next_unattempted, publish_many_messages_with_notify,
-    report_dead, report_retryable, report_success, request_lease,
+    get_next_missing_with_filter, get_next_retryable_with_filter,
+    get_next_unattempted_with_filter, publish_many_messages_with_notify, report_dead,
+    report_retryable, report_success, request_lease, Filter,
 };
 use crate::testing_tools::{
     is_dead, is_failed, is_in_progress, is_missing, is_pending, is_succeeded,
@@ -37,6 +38,7 @@ impl Queries {
         }
     }
 
+    #[deprecated = "use get_next_retryable_with_filter(tx, now, host_id, hold_for, Filter::default())"]
     pub async fn get_next_retryable(
         &self,
         tx: &mut PgTransaction<'_>,
@@ -44,10 +46,25 @@ impl Queries {
         host_id: Uuid,
         hold_for: Duration,
     ) -> Result<Option<RawMessage>, sqlx::Error> {
-        set_schema_for_transaction(tx, &self.schema).await?;
-        get_next_retryable(&mut **tx, now, host_id, hold_for).await
+        self.get_next_retryable_with_filter(tx, now, host_id, hold_for, Filter::default())
+            .await
     }
 
+    /// Polls for the next retryable message within `self.schema`,
+    /// optionally filtering out specified message names.
+    pub async fn get_next_retryable_with_filter(
+        &self,
+        tx: &mut PgTransaction<'_>,
+        now: DateTime<Utc>,
+        host_id: Uuid,
+        hold_for: Duration,
+        filter: Filter,
+    ) -> Result<Option<RawMessage>, sqlx::Error> {
+        set_schema_for_transaction(tx, &self.schema).await?;
+        get_next_retryable_with_filter(&mut **tx, now, host_id, hold_for, filter).await
+    }
+
+    #[deprecated = "use get_next_missing_with_filter(tx, now, host_id, hold_for, Filter::default())"]
     pub async fn get_next_missing<'tx>(
         &self,
         tx: &mut PgTransaction<'tx>,
@@ -55,10 +72,25 @@ impl Queries {
         host_id: Uuid,
         hold_for: Duration,
     ) -> Result<Option<RawMessage>, sqlx::Error> {
-        set_schema_for_transaction(tx, &self.schema).await?;
-        get_next_missing(&mut **tx, now, host_id, hold_for).await
+        self.get_next_missing_with_filter(tx, now, host_id, hold_for, Filter::default())
+            .await
     }
 
+    /// Polls for the next missing message within `self.schema`,
+    /// optionally filtering out specified message names.
+    pub async fn get_next_missing_with_filter<'tx>(
+        &self,
+        tx: &mut PgTransaction<'tx>,
+        now: DateTime<Utc>,
+        host_id: Uuid,
+        hold_for: Duration,
+        filter: Filter,
+    ) -> Result<Option<RawMessage>, sqlx::Error> {
+        set_schema_for_transaction(tx, &self.schema).await?;
+        get_next_missing_with_filter(&mut **tx, now, host_id, hold_for, filter).await
+    }
+
+    #[deprecated = "use get_next_unattempted_with_filter(tx, now, host_id, hold_for, Filter::default())"]
     pub async fn get_next_unattempted<'tx>(
         &self,
         tx: &mut PgTransaction<'tx>,
@@ -66,8 +98,22 @@ impl Queries {
         host_id: Uuid,
         hold_for: Duration,
     ) -> Result<Option<RawMessage>, sqlx::Error> {
+        self.get_next_unattempted_with_filter(tx, now, host_id, hold_for, Filter::default())
+            .await
+    }
+
+    /// Polls for the next unattempted message within `self.schema`,
+    /// optionally filtering out specified message names.
+    pub async fn get_next_unattempted_with_filter<'tx>(
+        &self,
+        tx: &mut PgTransaction<'tx>,
+        now: DateTime<Utc>,
+        host_id: Uuid,
+        hold_for: Duration,
+        filter: Filter,
+    ) -> Result<Option<RawMessage>, sqlx::Error> {
         set_schema_for_transaction(tx, &self.schema).await?;
-        get_next_unattempted(&mut **tx, now, host_id, hold_for).await
+        get_next_unattempted_with_filter(&mut **tx, now, host_id, hold_for, filter).await
     }
 
     /// Inserts a single message into `messages_unattempted` and sends a single
