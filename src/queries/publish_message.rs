@@ -70,7 +70,7 @@ pub async fn publish_many_messages_with_notify(
             .push(", ")
             .push_bind(&msg.payload)
             .push(", ")
-            .push_bind(&now)
+            .push_bind(now)
             .push(")");
     }
 
