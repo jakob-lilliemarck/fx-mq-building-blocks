@@ -1,3 +1,4 @@
+mod filter;
 mod get_next_missing;
 mod get_next_retryable;
 mod get_next_unattempted;
@@ -9,9 +10,10 @@ mod request_lease;
 mod search_scheduled;
 mod with_schema;
 
-pub use get_next_missing::get_next_missing;
-pub use get_next_retryable::get_next_retryable;
-pub use get_next_unattempted::get_next_unattempted;
+pub use filter::Filter;
+pub use get_next_missing::{get_next_missing, get_next_missing_with_filter};
+pub use get_next_retryable::{get_next_retryable, get_next_retryable_with_filter};
+pub use get_next_unattempted::{get_next_unattempted, get_next_unattempted_with_filter};
 pub use publish_message::{publish_many_messages_with_notify, publish_message};
 pub use report_dead::report_dead;
 pub use report_retryable::report_retryable;

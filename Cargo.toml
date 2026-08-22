@@ -1,6 +1,6 @@
 [package]
 name = "fx-mq-building-blocks"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 authors = ["Jakob Lilliemarck <lilliemarckjakob@gmail.com>"]
 description = "Building blocks for message queue implementations"

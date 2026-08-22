@@ -1,0 +1,49 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH candidate AS (\n            SELECT ma.*\n            FROM messages_attempted ma\n            WHERE NOT EXISTS (\n                SELECT 1 FROM attempts_succeeded s\n                WHERE s.message_id = ma.id\n            )\n            AND NOT EXISTS (\n                SELECT 1 FROM attempts_dead d\n                WHERE d.message_id = ma.id\n            )\n              AND EXISTS (\n                SELECT 1 FROM leases l\n                WHERE l.message_id = ma.id\n            )\n              AND NOT EXISTS (\n                SELECT 1 FROM leases l2\n                WHERE l2.message_id = ma.id AND l2.expires_at > $1\n            )\n            AND ma.name != ALL($4)\n            ORDER BY ma.published_at\n            LIMIT 1\n            FOR UPDATE SKIP LOCKED\n        ),\n        leased AS (\n            INSERT INTO leases (message_id, acquired_at, acquired_by, expires_at)\n            SELECT c.id, $1, $2, $3\n            FROM candidate c\n        )\n        SELECT c.id,\n            c.name,\n            c.hash,\n            c.payload,\n            0 \"attempted!\"\n        FROM candidate c;\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "hash",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "payload",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "attempted!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Uuid",
+        "Timestamptz",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "c0ba9ccfe20a87d40a048e305f82c372eb75382ba3cde0172b6c65475b9f550f"
+}

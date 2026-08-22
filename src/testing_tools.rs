@@ -311,13 +311,13 @@ impl TestMessage {
     }
 
     pub fn to_raw(&self) -> anyhow::Result<RawMessage> {
-        let payload = serde_json::to_value(&self)?;
+        let payload = serde_json::to_value(self)?;
 
         Ok(RawMessage {
             id: Uuid::now_v7(),
             name: TestMessage::NAME.to_string(),
             hash: TestMessage::HASH,
-            payload: payload,
+            payload,
             attempted: 0,
         })
     }

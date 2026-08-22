@@ -213,7 +213,7 @@ mod tests {
         // Iteration 2: wait 10ms (attempt 2: base_delay * 2^1 = 10ms)
         let mut n = 0;
         let now = Utc::now();
-        while let Some(_) = stream.next().await {
+        while stream.next().await.is_some() {
             // increment the failed count on each iteration
             stream.increment_failed_attempts();
             if n == iterations - 1 {

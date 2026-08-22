@@ -41,7 +41,7 @@ impl PgIdentifier {
         })
     }
 
-    pub fn as_ref(&self) -> &str {
+    pub fn as_str(&self) -> &str {
         &self.ident
     }
 }
@@ -59,7 +59,7 @@ mod tests {
     #[test]
     fn it_escapes_wierd_identifier_names() -> anyhow::Result<()> {
         let ident = PgIdentifier::parse("test\"test")?;
-        assert_eq!(ident.as_ref(), "\"test\"\"test\"");
+        assert_eq!(ident.as_str(), "\"test\"\"test\"");
 
         Ok(())
     }
@@ -127,11 +127,11 @@ where
     let mut tx = conn.begin().await?;
 
     // Ensure the schema exists
-    let create_schema = format!("CREATE SCHEMA IF NOT EXISTS {};", schema_ident.as_ref());
+    let create_schema = format!("CREATE SCHEMA IF NOT EXISTS {};", schema_ident.as_str());
     sqlx::query(&create_schema).execute(&mut *tx).await?;
 
     // Temporarily set search_path for this transaction
-    let set_search_path = format!("SET LOCAL search_path TO {};", schema_ident.as_ref());
+    let set_search_path = format!("SET LOCAL search_path TO {};", schema_ident.as_str());
     sqlx::query(&set_search_path).execute(&mut *tx).await?;
 
     // Run migrations within the schema
