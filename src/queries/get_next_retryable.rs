@@ -308,10 +308,9 @@ mod tests {
 
         let filter = Filter::default().with_exclude_names(vec!["excluded-job".into()]);
         let query_now = report_time_unfiltered;
-        let polled =
-            get_next_retryable_with_filter(&pool, query_now, host_id, hold_for, filter)
-                .await?
-                .expect("Expected a message to be returned");
+        let polled = get_next_retryable_with_filter(&pool, query_now, host_id, hold_for, filter)
+            .await?
+            .expect("Expected a message to be returned");
 
         assert_eq!(polled.name, "unfiltered-job");
 
@@ -336,15 +335,7 @@ mod tests {
 
         let try_earliest_at = backoff.try_at(1, now);
 
-        report_retryable(
-            &pool,
-            published.id,
-            now,
-            1,
-            try_earliest_at,
-            "error",
-        )
-        .await?;
+        report_retryable(&pool, published.id, now, 1, try_earliest_at, "error").await?;
 
         let polled =
             get_next_retryable_with_filter(&pool, now, host_id, hold_for, Filter::default())
@@ -374,19 +365,10 @@ mod tests {
 
         let try_earliest_at = backoff.try_at(1, now);
 
-        report_retryable(
-            &pool,
-            published.id,
-            now,
-            1,
-            try_earliest_at,
-            "error",
-        )
-        .await?;
+        report_retryable(&pool, published.id, now, 1, try_earliest_at, "error").await?;
 
         let filter = Filter::default().with_exclude_names(vec![TestMessage::NAME.into()]);
-        let polled =
-            get_next_retryable_with_filter(&pool, now, host_id, hold_for, filter).await?;
+        let polled = get_next_retryable_with_filter(&pool, now, host_id, hold_for, filter).await?;
 
         assert!(polled.is_none());
 

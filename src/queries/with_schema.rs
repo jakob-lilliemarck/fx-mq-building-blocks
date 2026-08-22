@@ -2,9 +2,9 @@ use crate::constants::FX_MQ_MESSAGE_NOTIFICATION_CHANNEL;
 use crate::models::RawMessage;
 use crate::queries::search_scheduled::search_scheduled;
 use crate::queries::{
-    get_next_missing_with_filter, get_next_retryable_with_filter,
+    Filter, get_next_missing_with_filter, get_next_retryable_with_filter,
     get_next_unattempted_with_filter, publish_many_messages_with_notify, report_dead,
-    report_retryable, report_success, request_lease, Filter,
+    report_retryable, report_success, request_lease,
 };
 use crate::testing_tools::{
     is_dead, is_failed, is_in_progress, is_missing, is_pending, is_succeeded,
